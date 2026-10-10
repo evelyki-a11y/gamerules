@@ -4,14 +4,14 @@ import lombok.Getter;
 
 @Getter
 public enum Game {
+    ROOT("Root", "root.pdf"),
+    SPIRIT_ISLAND("Spirit Island", "spirit-island.pdf");
 
-    ROOT("root.pdf"),
-    SPIRIT_ISLAND("spirit-island.pdf");
+    private final String displayName,fileName;
 
-    private final String fileName;
-
-    Game(String fileName),
-        this.rulebooks = rulebooks
-
+    Game(String displayName, String fileName) {
+        this.displayName = displayName;
+        this.fileName = fileName;
+    }
 }
 
