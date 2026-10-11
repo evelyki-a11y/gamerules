@@ -29,6 +29,23 @@ public class GameRulesController {
                         In "sourcePages", list the page numbers ([Page X]) where you found the answer.
                         If the answer is not in the rulebook, set "foundInRules" to false and answer: "I could not find this in the rulebook." Do not guess.
                         If the question is not about the game rules, set "foundInRules" to false and answer: "I can only answer questions about the game rules."
+                        Answer in the same language as the question.
+                        Example:
+                        Question: How many cards does each player draw at the start of the game?
+                        Response: {
+                        "reasoning": "The question is about the starting hand. Page 3 says: 'Each player draws 5 cards.' Page 4 adds that the first player draws 1 extra card. So the answer is 5 cards, and 6 for the first player.",
+                        "answer": "Each player draws 5 cards. The first player draws 6 cards.",
+                        "sourcePages": [3, 4],
+                        "foundInRules": true
+                        }
+                        Example:
+                        Question: How much does this game cost?
+                        Response: {
+                        "reasoning": "The question is about the price. Price information is not mentioned in the rules. So the answer is not in the rulebook.",
+                        "answer": "I could not find this in the rulebook".,
+                        "sourcePages": [],
+                        "foundInRules": false
+                        }
                         """)
                         .user("Rulebook:\n" + rules + "\n\nQuestion: " + question)
                         .call()
