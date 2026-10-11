@@ -14,7 +14,11 @@ public class GameRulesController {
     private final RulebookService rulebookService;
 
     public GameRulesController(ChatClient.Builder builder, RulebookService rulebookService) {
-        this.chat = builder.build();
+        this.chat = builder
+                .defaultAdvisors(
+                        new RegexJailbreakAdvisor()
+                )
+                .build();
         this.rulebookService = rulebookService;
     }
 
@@ -24,7 +28,7 @@ public class GameRulesController {
         ResponseEntity<ChatResponse, RuleAnswer> response = chat.prompt()
                 .system("""
                         You are a board game rules assistant.
-                        Answer ONLY using the rulebook text given by the user. Never use your own knowledge.
+                        Answer ONLY using the rulebook text in the rulebook below. Never use your own knowledge.
                         Before answering, think step by step in the "reasoning" field: find the relevant pages, write what the rule says, then draw a conclusion.
                         In "sourcePages", list the page numbers ([Page X]) where you found the answer.
                         If the answer is not in the rulebook, set "foundInRules" to false and answer: "I could not find this in the rulebook." Do not guess.
@@ -42,15 +46,19 @@ public class GameRulesController {
                         Question: How much does this game cost?
                         Response: {
                         "reasoning": "The question is about the price. Price information is not mentioned in the rules. So the answer is not in the rulebook.",
-                        "answer": "I could not find this in the rulebook".,
+                        "answer": "I could not find this in the rulebook.",
                         "sourcePages": [],
                         "foundInRules": false
                         }
-                        """)
-                        .user("Rulebook:\n" + rules + "\n\nQuestion: " + question)
-                        .call()
+                        """ + "\n\nRulebook:\n" + rules)
+                .user(question)
+                .call()
                 .responseEntity(RuleAnswer.class, spec -> spec.useProviderStructuredOutput().validateSchema());
 
-        return response.getResponse().getResult().getOutput().getText();
+        String answer = response.getResponse().getResult().getOutput().getText();
+        if (answer.length() > 4000 || answer.contains("You are a board game rules assistant")){
+            return "Answer was blocked by a safety check";
+        }
+        return answer;
     }
 }
