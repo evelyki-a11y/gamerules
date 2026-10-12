@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mängureeglite abiline</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; background: #f5f5f5; color: #222; }
+        h1 { margin-bottom: 4px; }
+        .card { background: #fff; border-radius: 8px; padding: 20px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        label { font-weight: bold; display: block; margin-bottom: 6px; }
+        select, textarea { width: 100%; box-sizing: border-box; padding: 8px; font-size: 15px; margin-bottom: 14px; }
+        textarea { height: 90px; }
+        button { background: #2d6cdf; color: #fff; border: none; padding: 10px 20px; font-size: 15px; border-radius: 6px; cursor: pointer; }
+        button:disabled { background: #999; }
+        .field { margin-bottom: 12px; }
+        .field b { display: block; color: #555; font-size: 13px; text-transform: uppercase; }
+        .ok { color: #1a7f37; }
+        .error { color: #c62828; }
+        pre { background: #272822; color: #f8f8f2; padding: 12px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<h1>Mängureeglite abiline</h1>
+<p>Küsi lauamängu reeglite kohta. Vastus tuleb ainult reeglite raamatust.</p>
+
+<div class="card">
+    <label for="game">Mäng</label>
+    <select id="game">
+        <option value="ROOT">Root</option>
+        <option value="SPIRIT_ISLAND">Spirit Island</option>
+    </select>
+
+    <label for="question">Küsimus</label>
+    <textarea id="question" placeholder="How many players can play Root?"></textarea>
+
+    <button id="askButton" onclick="ask()">Küsi</button>
+</div>
+
+<div class="card" id="result" style="display: none;"></div>
+
+<script>
+    async function ask() {
+        const game = document.getElementById("game").value;
+        const question = document.getElementById("question").value;
+        const button = document.getElementById("askButton");
+        const result = document.getElementById("result");
+
+        button.disabled = true;
+        result.style.display = "block";
+        result.innerHTML = "Ootan vastust...";
+
+        try {
+            const response = await fetch("/games/" + game + "/ask", {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                body: question
+            });
+            const text = await response.text();
+            showResult(response.status, text);
+        } catch (e) {
+            result.innerHTML = "<p class='error'>Rakendusega ei saanud ühendust. Kas rakendus töötab?</p>";
+        }
+        button.disabled = false;
+    }
+
+    function showResult(status, text) {
+        const result = document.getElementById("result");
+        let data = null;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            // Vastus ei ole JSON (nt väljundi kontrolli teade)
+        }
+
+        let html = "<p><b>HTTP staatus:</b> " + status + "</p>";
+
+        if (data && data.answer !== undefined) {
+            // Tavaline vastus (RuleAnswer)
+            html += field("Vastus", escapeHtml(data.answer));
+            html += field("Leheküljed (sourcePages)", data.sourcePages.length > 0 ? data.sourcePages.join(", ") : "-");
+            html += field("Leitud reeglitest (foundInRules)",
+                data.foundInRules ? "<span class='ok'>jah</span>" : "<span class='error'>ei</span>");
+            html += field("Mõttekäik (reasoning)", escapeHtml(data.reasoning));
+        } else if (data && data.guardrail) {
+            // Sisendi turvakontroll blokeeris (GuardrailExceptionHandler)
+            html += "<p class='error'>" + escapeHtml(data.detail) + "</p>";
+            html += field("Kontroll (guardrail)", escapeHtml(data.guardrail));
+            html += field("Etapp (stage)", escapeHtml(data.stage));
+        } else {
+            // Muu vastus, nt "Answer was blocked by a safety check"
+            html += "<p class='error'>" + escapeHtml(text) + "</p>";
+        }
+
+        html += "<b>Täielik vastus serverist:</b><pre>" + escapeHtml(data ? JSON.stringify(data, null, 2) : text) + "</pre>";
+        result.innerHTML = html;
+    }
+
+    function field(name, value) {
+        return "<div class='field'><b>" + name + "</b>" + value + "</div>";
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;");
+    }
+</script>
+</body>
+</html>
